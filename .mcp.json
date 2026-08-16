@@ -5,7 +5,6 @@
       "args": [
         "-y",
         "@modelcontextprotocol/server-filesystem@latest",
-        "--allowed-directories",
         "C:\\Users\\Haspe\\IdeaProjects\\bmad\\2026-udc-06-mcp-hw\\app\\data"
       ],
       "env": {}
@@ -27,5 +26,6 @@
     }
   }
 }
+
 
 

@@ -63,7 +63,7 @@ This app connects to two public MCP servers configured at the repo root (`.mcp.j
 
 - **Command:** `npx @modelcontextprotocol/server-memory@latest`
 - **Purpose:** Provides in-session note storage so the agent can track intermediate results across tool calls. Useful for A/B logging and comparison.
-- **Key tools:** `save_note`, `retrieve_note`, `list_notes`
+- **Key tools:** `create_entities`, `add_observations`, `read_graph`, `search_nodes`
 - **Scope:** Session-only (no filesystem touch).
 
 Both servers are configured with no secrets (no API keys required). The setup enforces least privilege: only the minimum tools the agent needs to complete the homework tasks.

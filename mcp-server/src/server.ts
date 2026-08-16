@@ -69,10 +69,70 @@ server.registerTool(
 );
 
 // ── Tool 2 ────────────────────────────────────────────────────────────────
-// TODO: add a second tool. Natural options (see materials/domain-brief.md):
-//   check_stock(sku) -> findBySku, reporting stock vs reorderLevel
-//   low_stock()      -> lowStock, the items that need reordering
-// Remember: read-only. No writes, no deletes, no network calls.
+server.registerTool(
+  "check_stock",
+  {
+    description:
+      "Check stock and reorder status for a single SKU. Use when the user asks " +
+      "about a specific product's availability.",
+    inputSchema: z.object({
+      sku: z.string().describe("Product SKU, e.g. KB-1001"),
+    }),
+  },
+  async ({ sku }) => {
+    const product = findBySku(loadCatalog(), sku);
+    if (!product) {
+      return {
+        content: [{ type: "text", text: `SKU not found: ${sku}` }],
+      };
+    }
+
+    const needsReorder = product.stock <= product.reorderLevel;
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            `${product.sku} — ${product.name}\n` +
+            `Category: ${product.category}\n` +
+            `Price: $${product.price.toFixed(2)}\n` +
+            `Stock: ${product.stock}\n` +
+            `Reorder level: ${product.reorderLevel}\n` +
+            `Needs reorder: ${needsReorder ? "YES" : "NO"}`,
+        },
+      ],
+    };
+  },
+);
+
+server.registerTool(
+  "low_stock",
+  {
+    description:
+      "List all products that need reordering (stock <= reorder level). Use " +
+      "when the user asks which products are low or need restock.",
+    inputSchema: z.object({}),
+  },
+  async () => {
+    const items = lowStock(loadCatalog());
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            items.length === 0
+              ? "No products need reordering right now."
+              : items
+                  .map(
+                    (p) =>
+                      `${p.sku} — ${p.name} · stock ${p.stock} (reorder at ${p.reorderLevel})`,
+                  )
+                  .join("\n"),
+        },
+      ],
+    };
+  },
+);
 
 // ── Resource ──────────────────────────────────────────────────────────────
 // A resource is APPLICATION-controlled context read by URI — unlike a tool,
