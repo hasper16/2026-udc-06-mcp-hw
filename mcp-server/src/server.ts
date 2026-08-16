@@ -1,8 +1,8 @@
 /**
- * MCP server over the seeded catalog domain — SKELETON for Task B.
+ * Read-only MCP server over the seeded catalog domain for Workshop 6.
  *
- * Fill in the TODOs. Requirements: >= 2 tools, >= 1 resource, read-only,
- * and the catalog logic IMPORTED from app/ rather than reimplemented here.
+ * Exposes tools and resources backed by the existing app domain logic
+ * imported from app/dist instead of reimplementing business rules.
  *
  * API note: the SDK is mid-transition between v1 and v2 and exact signatures
  * move. If something below does not compile against your installed version,

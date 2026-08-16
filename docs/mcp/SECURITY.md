@@ -4,9 +4,9 @@
 
 | Сервер | Дані/ресурси, до яких дістає | Секрети | Може писати? | Довіра до автора |
 |---|---|---|---|---|
-| filesystem | `C:\Users\Haspe\IdeaProjects\bmad\2026-udc-06-mcp-hw\app\data` (точно: `catalog.json`) | немає | ні | Офіційний (@modelcontextprotocol/server-filesystem) |
-| memory | Оперативна пам'ять сеансу (in-session storage) | немає | так, але лише нотатки в сеансі | Офіційний (@modelcontextprotocol/server-memory) |
-| mcp-server/ (власний) | `C:\Users\Haspe\IdeaProjects\bmad\2026-udc-06-mcp-hw\app\dist\index.js` (імпортує catalog.json через app/) | немає | ні (read-only tools) | Свій код, цей ХВ |
+| filesystem | `${workspaceFolder}/app/data` (точно: `catalog.json`) | немає | так (`write_file`, `edit_file`, `move_file`, `create_directory`) | Офіційний (@modelcontextprotocol/server-filesystem@2026.7.10) |
+| memory | Оперативна пам'ять сеансу (in-session storage) | немає | так (`create_*`, `delete_*`) | Офіційний (@modelcontextprotocol/server-memory@2026.7.4) |
+| mcp-server/ (власний) | `${workspaceFolder}/app/dist/index.js` (імпортує catalog.json через app/) | немає | ні (read-only tools) | Свій код, цей ХВ |
 
 ## 2. Ризики, які я вважаю реальними для цієї конфігурації
 
@@ -33,26 +33,27 @@
   - **Висновок:** Репо чист.
 
 ### **Зміна поведінки сервера після встановлення**
-- **Що саме:** Публічні сервери використовують `@latest`, який завантажується на кожен запуск. Якщо пакет оновиться, поведінка змініться (чи сервер може розбитись).
+- **Що саме:** Пакети MCP можуть змінюватися між релізами, тому плаваючі версії дають non-deterministic поведінку.
 - **У цій конфігурації:**
-  - ❌ Filesystem: `@latest` (нефіксована версія)
-  - ❌ Memory: `@latest`
+  - ✅ Filesystem: `@2026.7.10`
+  - ✅ Memory: `@2026.7.4`
   - ✅ Власний сервер: зафіксован у `mcp-server/package-lock.json` (lock file гарантує стабільність)
-- **Ризик:** Low для домашки (коротка тривалість, SDK стабільний), але в проді рекомендується фіксувати версію в конфізі (замість `@latest` → `@1.2.3`).
+- **Ризик:** знижений через pinning, але не нульовий (можливі upstream issues у зафіксованих версіях).
 
 ### **Дії з побічним ефектом**
 - **Що саме:** Tool, який щось змінює (пише файли, видаляє дані, надсилає HTTP, запускає команди).
 - **У цій конфігурації:**
-  - ✅ Всі tools read-only
-  - ✅ Memory на дозвіл збереження нотаток, але це изолировано в сеансі, не впливає на файлову систему
-  - **Висновок:** Жодних побічних ефектів; домашка дотримується least-privilege.
+  - ⚠️ Filesystem і memory включають write/delete tools
+  - ✅ Власний `catalog-server` лишається read-only
+  - ✅ Filesystem scope обмежений до `${workspaceFolder}/app/data`, що зменшує blast radius
+  - **Висновок:** ризик side effects існує для публічних серверів, тому критичні guardrail-и — вузький scope і уважний контроль tool-викликів.
 
 ## 3. Що я зробив, щоб це зменшити
 
 ### Конкретні кроки у цьому репо:
 
 1. **Filesystem обмежено каталогом даних**
-   - Позиційний аргумент `...\app\data` обмежує сервер точно на синтетичні товари
+   - Позиційний аргумент `${workspaceFolder}/app/data` обмежує сервер точно на синтетичні товари
    - Не даємо доступу ні до домашньої папки, ні до системних файлів
 
 2. **Власний сервер — тільки read-only tools**
@@ -66,9 +67,9 @@
    - Бізнес-логіка в `app/src/catalog.ts` залишається чистою та тестованою
    - Риск того, що логіка розділиться й різниться між місцями — відсутній
 
-4. **Версії збереглись (за рахунок package-lock)**
+4. **Версії зафіксовано**
    - Власний сервер залежить від зафіксованих версій `@modelcontextprotocol/server`
-   - Public servers використовують `@latest`, але це публічні офіційні сервери з хорошою historій
+   - Public servers зафіксовано на `@2026.7.10` (filesystem) і `@2026.7.4` (memory)
 
 5. **Нема секретів у конфізі чи коді**
    - `.mcp.json` — шляхи, командл, немає ключів
@@ -77,10 +78,10 @@
 
 ## 4. Що лишилось прийнятим ризиком
 
-1. **Public servers версій `@latest`**
-   - В проді рекомендується фіксувати версії
-   - На домашці (коротка тривалість): прийнятно
-   - MCP SDK досить нов і стабільний, критичних breaking changes малоймовірні
+1. **Публічні сервери мають write/delete tools**
+   - Навіть за вузького scope filesystem може змінювати файли всередині `app/data`
+   - memory дозволяє мутації knowledge graph (`create_*`, `delete_*`)
+   - Для цього репо ризик прийнятний через синтетичні дані та відсутність секретів
 
 2. **MCP Roots vs хост-визначений scope**
    - Специфікація MCP 2026-07-28 позначила `roots` deprecated; реальна межа — права ОС
@@ -100,9 +101,9 @@
   - catalog-server → мій код в цьому ХВ
   
 - [x] Я прочитав, які саме tools він додає (а не лише назву пакета)
-  - filesystem: read_file, list_directory, create_file, get_file_stats, list_allowed_directories
-  - memory: save_note, retrieve_note, list_notes
-  - catalog-server: search_inventory, low_stock + resource inventory://catalog
+  - filesystem: `read_file`, `read_text_file`, `read_media_file`, `read_multiple_files`, `list_directory`, `list_directory_with_sizes`, `directory_tree`, `search_files`, `get_file_info`, `list_allowed_directories`, `write_file`, `edit_file`, `create_directory`, `move_file`
+  - memory: `create_entities`, `create_relations`, `add_observations`, `delete_entities`, `delete_observations`, `delete_relations`, `read_graph`, `search_nodes`, `open_nodes`
+  - catalog-server: `search_inventory`, `check_stock`, `low_stock` + resource `inventory://catalog`
   
 - [x] Я дав йому мінімальну область доступу, а не «щоб точно працювало»
   - filesystem: лише `app/data`
@@ -114,12 +115,14 @@
   - git grep clean
   
 - [x] Я знаю, чи є серед його tools такі, що змінюють стан, і чи вимагається підтвердження перед викликом
-  - filesystem: має create_file, але це public server — на користувача покладається kontrol; для домашки дозволяємо, але наш сервер не викликує
-  - memory: save_note может писати, але лише в сеансову пам'ять, ізольовано
+  - filesystem: має `write_file`/`edit_file`/`move_file`/`create_directory` (state-changing)
+  - memory: має `create_*` та `delete_*` (state-changing в межах graph)
   - catalog-server: жодних write tools
   
 - [x] Версія зафіксована настільки, наскільки це можливо
   - Власний сервер: package-lock.json гарантує версії
-  - Public: @latest (домашка, низький ризик; production → замість @latest → @X.Y.Z)
+  - Public: зафіксовано `@2026.7.10` і `@2026.7.4`
+
+
 
 

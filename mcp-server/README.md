@@ -1,11 +1,10 @@
-# Скелет MCP-сервера (Task B)
+# MCP-сервер каталогу (Task B)
 
-Скопіюйте цю теку в `mcp-server/` у корені репо і допишіть TODO.
+Готовий пакет власного read-only MCP-сервера для цього репозиторію.
 
 ```bash
-cp -r docs/templates/mcp-server ./mcp-server
-cd mcp-server && npm install
-cd ../app && npm run build && cd ..   # сервер імпортує app/dist
+cd app && npm run build && cd ..
+cd mcp-server && npm install && npm run build
 ```
 
 Розкладка (важлива — не «спрощуйте» її):

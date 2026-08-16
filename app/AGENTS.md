@@ -50,20 +50,30 @@ them.
 
 ## MCPs
 
-This app connects to two public MCP servers configured at the repo root (`.mcp.json`).
+This app uses three MCP servers configured at the repo root (`.mcp.json`).
 
 ### filesystem
 
-- **Command:** `npx @modelcontextprotocol/server-filesystem@latest --allowed-directories <repo>/app/data`
-- **Purpose:** Allows the agent to read `catalog.json` during work and especially during the A/B test (Task D). Read-only to this folder.
-- **Key tools:** `read_file`, `list_directory`
-- **Scope:** Limited to `app/data/` — not the full repo or home directory.
+- **Command:** `npx -y @modelcontextprotocol/server-filesystem@2026.7.10 ${workspaceFolder}/app/data`
+- **Purpose:** Allows access to `catalog.json` during verification and A/B checks.
+- **Key tools:** `read_text_file`, `list_directory`, `list_allowed_directories` (+ write-capable tools like `write_file`, `edit_file`, `move_file`).
+- **Scope:** Limited to `${workspaceFolder}/app/data`.
 
 ### memory
 
-- **Command:** `npx @modelcontextprotocol/server-memory@latest`
+- **Command:** `npx -y @modelcontextprotocol/server-memory@2026.7.4`
 - **Purpose:** Provides in-session note storage so the agent can track intermediate results across tool calls. Useful for A/B logging and comparison.
-- **Key tools:** `create_entities`, `add_observations`, `read_graph`, `search_nodes`
+- **Key tools:** `create_entities`, `create_relations`, `add_observations`, `read_graph`, `search_nodes`, `open_nodes` (+ delete operations).
 - **Scope:** Session-only (no filesystem touch).
 
-Both servers are configured with no secrets (no API keys required). The setup enforces least privilege: only the minimum tools the agent needs to complete the homework tasks.
+### catalog-server
+
+- **Command:** `node ${workspaceFolder}/mcp-server/dist/server.js`
+- **Purpose:** Exposes a read-only domain API over the seeded catalog.
+- **Transport:** stdio
+- **Scope:** Reads catalog data through `app/dist/index.js` (`loadCatalog()`), no write/network operations.
+- **Secrets:** none
+- **Tools:** `search_inventory`, `check_stock`, `low_stock`
+- **Resources:** `inventory://catalog`
+
+No API keys are required for these servers. Least privilege is enforced by scope-limiting filesystem to `app/data` and keeping `catalog-server` read-only.
