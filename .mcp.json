@@ -17,7 +17,15 @@
         "@modelcontextprotocol/server-memory@latest"
       ],
       "env": {}
+    },
+    "catalog-server": {
+      "command": "node",
+      "args": [
+        "C:\\Users\\Haspe\\IdeaProjects\\bmad\\2026-udc-06-mcp-hw\\mcp-server\\dist\\server.js"
+      ],
+      "env": {}
     }
   }
 }
+
 
