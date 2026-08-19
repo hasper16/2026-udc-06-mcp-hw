@@ -4,9 +4,9 @@
 
 | Сервер | Дані/ресурси, до яких дістає | Секрети | Може писати? | Довіра до автора |
 |---|---|---|---|---|
-| filesystem | `${workspaceFolder}/app/data` (точно: `catalog.json`) | немає | так (`write_file`, `edit_file`, `move_file`, `create_directory`) | Офіційний (@modelcontextprotocol/server-filesystem@2026.7.10) |
-| memory | Оперативна пам'ять сеансу (in-session storage) | немає | так (`create_*`, `delete_*`) | Офіційний (@modelcontextprotocol/server-memory@2026.7.4) |
-| mcp-server/ (власний) | `${workspaceFolder}/app/dist/index.js` (імпортує catalog.json через app/) | немає | ні (read-only tools) | Свій код, цей ХВ |
+| filesystem | `${workspaceFolder}/app/data/` (фактично `catalog.json` та інші файли в цій теці) | немає | так (`write_file`, `edit_file`, `move_file`, `create_directory`) | Офіційний (@modelcontextprotocol/server-filesystem@2026.7.10) |
+| memory | In-session knowledge graph, без файлового доступу | немає | так (`create_*`, `delete_*`) | Офіційний (@modelcontextprotocol/server-memory@2026.7.4) |
+| catalog-server | `app/dist/index.js` як модуль-адаптер; дані читає через `loader.ts` з `app/data/catalog.json` | немає | ні (read-only tools) | Свій код, цей ХВ |
 
 ## 2. Ризики, які я вважаю реальними для цієї конфігурації
 
@@ -26,11 +26,12 @@
 ### **Витік секретів**
 - **Що саме:** GitHub не повинен мати реальні API ключі, токени, пароли.
 - **У цій конфігурації:**
-  - ✅ `.mcp.json` — немає літеральних токенів; усе через команди або `${ENV}`
+  - ✅ `.mcp.json` — `env` порожній у всіх серверів; у файлі немає закомічених секретів
+  - ✅ Якщо секрет колись потрібен, передавати його слід тільки через `${ENV_VAR}`
   - ✅ `.env` вже в `.gitignore` (домашка умовна, але дотримується)
   - ✅ `.env.example` — шаблон без значень
-  - **Перевірка:** `git grep -nE "ghp_|github_pat_|sk-"` → нічого
-  - **Висновок:** Репо чист.
+  - ⚠️ Попередня перевірка робила лише вузький `git grep` по шаблонах `ghp_`, `github_pat_`, `sk-`; це не замінює повноцінний secret scanner.
+  - **Висновок:** за перевіреними шаблонами секретів не знайдено, але для повної впевненості потрібен secret scanner.
 
 ### **Зміна поведінки сервера після встановлення**
 - **Що саме:** Пакети MCP можуть змінюватися між релізами, тому плаваючі версії дають non-deterministic поведінку.
@@ -84,9 +85,9 @@
    - Для цього репо ризик прийнятний через синтетичні дані та відсутність секретів
 
 2. **MCP Roots vs хост-визначений scope**
-   - Специфікація MCP 2026-07-28 позначила `roots` deprecated; реальна межа — права ОС
-   - На Windows це права користувача (я запускаюся як Haspe, тому доступу до системних папок не маю автоматично)
-   - На домашці це OK; в проді — потрібна окрема вісь під процес або контейнер
+   - Configured MCP scope (`app/data`) задається серверним аргументом і не дорівнює host-provided roots
+   - OS permissions є defense in depth, а не заміною для MCP scope
+   - Процес слід запускати під least-privileged account або в sandbox/container
 
 3. **Вручну проведена валідація конфіг**
    - Немає окремого runtime-check, що scope не був розширений поза `app/data`
@@ -115,13 +116,14 @@
   - git grep clean
   
 - [x] Я знаю, чи є серед його tools такі, що змінюють стан, і чи вимагається підтвердження перед викликом
-  - filesystem: має `write_file`/`edit_file`/`move_file`/`create_directory` (state-changing)
-  - memory: має `create_*` та `delete_*` (state-changing в межах graph)
+  - filesystem: `write_file`/`edit_file`/`move_file`/`create_directory` — state-changing; у GitHub Copilot IntelliJ IDEA plugin 1.15.0-261 окремого per-call confirmation я не підтвердив, тож контроль лишається ⚠️
+  - memory: `create_*` та `delete_*` — state-changing у межах graph; окреме per-call confirmation не гарантоване, тож контроль лишається ⚠️
   - catalog-server: жодних write tools
   
 - [x] Версія зафіксована настільки, наскільки це можливо
   - Власний сервер: package-lock.json гарантує версії
   - Public: зафіксовано `@2026.7.10` і `@2026.7.4`
+
 
 
 

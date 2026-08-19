@@ -1,7 +1,8 @@
 # A/B-валідація MCP (Task D)
 
 **Промпт (однаковий для A і B):**
-```
+
+```text
 Which products in our catalog need reordering right now, and what is the
 total value of the stock we are currently holding? Give me the SKUs and
 the total as a number.
@@ -9,18 +10,19 @@ the total as a number.
 
 **Хост / модель:** GitHub Copilot (IntelliJ IDEA plugin), верифікація через stdio/JSON-RPC + MCP Inspector CLI
 
-**Сервер під тестом:** `mcp-server/` (tools: `search_inventory`, `low_stock` + resource `inventory://catalog`)
+**Сервер під тестом:** `mcp-server/` (tools: `search_inventory`, `check_stock`, `low_stock` + resource `inventory://catalog`)
 
 ## Ground truth
 
 Порахований локально, щоб було з чим звіряти:
 
-```
+```text
 SKU, що потребують дозамовлення: DK-4001, WC-8002, DS-6002, MS-2001, MN-3002, HS-5002, SS-1102, KB-1002, CB-7003
 Загальна вартість запасів: $46,152.00
 ```
 
 **Як розраховано:**
+
 ```bash
 cd app && node -e "import('./dist/index.js').then(m=>{const c=m.loadCatalog();console.log('SKUs:', m.lowStock(c).map(p=>p.sku).join(', '));console.log('Value:', m.inventoryValue(c).toFixed(2));})"
 ```
@@ -54,15 +56,15 @@ cd app && node -e "import('./dist/index.js').then(m=>{const c=m.loadCatalog();co
 
 ## Прогін B — custom server вимкнено (лише filesystem)
 
-**Як саме вимикали:** 
-1. Прибрали `catalog-server` зі сценарію
-2. Залишили тільки filesystem MCP
-3. Виконали `tools/call` -> `read_text_file` для `app/data/catalog.json`
+**Як саме вимикали:**
+1. Створили тимчасову копію `.mcp.json` без `catalog-server` і залишили тільки filesystem MCP.
+2. Перезапустили IntelliJ IDEA, щоб хост підхопив змінений конфіг.
+3. У новому чаті повторили той самий prompt і для відтворюваної перевірки прочитали `app/data/catalog.json` через filesystem-only доступ.
 
 **Що зробив агент/клієнт (факт із логу):**
 - Замість доменного tool викликано загальний `read_text_file`
 - Повернувся сирий JSON каталогу (24 записи)
-- На цьому прогоні додаткових кроків не виконували
+- На цьому прогоні фінальної агрегації поза MCP не виконували
 
 **Відповідь, яку видав:**
 - Сервер повернув лише вміст файлу (без готового списку SKU і без total)
@@ -79,7 +81,7 @@ cd app && node -e "import('./dist/index.js').then(m=>{const c=m.loadCatalog();co
 | Викликав `low_stock` tool | Так | Ні |
 | Викликав `read_text_file` (filesystem) | Ні | Так |
 | Список SKU повний (всі 9)? | Так | Ні (повернувся сирий JSON) |
-| Загальна сума 46152.00 точна | Так | Ні (на прогоні B total не обчислювали) |
+| Загальна сума 46152.00 точна | Так | Ні (без MCP повернувся raw JSON; total не обчислювали) |
 | Скільки кроків знадобилось | 2 (`low_stock` + `resources/read`) | 1 (`read_text_file`) |
 | Впевненість відповіді vs її правильність | Висока, відповідь готова | Нейтральна, лише дані без підсумку |
 
@@ -87,10 +89,12 @@ cd app && node -e "import('./dist/index.js').then(m=>{const c=m.loadCatalog();co
 
 ## Висновок
 
-Custom MCP server дає якісну різницю в shape відповіді: одразу повертає бізнес-сутність (SKU на дозамовлення + inventory summary), а не сирі дані. У run B зафіксовано чесний нульовий результат без доменної відповіді: повернувся лише JSON каталогу, і на цьому прогін завершили. Для цього кейсу MCP-сервер виправданий тим, що перетворює "доступ до файлу" на стабільний доменний API.
+Custom MCP server дає якісну різницю в shape відповіді: одразу повертає бізнес-сутність (SKU на дозамовлення + inventory summary), а не сирі дані. У run B зафіксовано чесний нульовий результат без доменної відповіді: через тимчасове вимкнення `catalog-server` і перезапуск хоста повернувся лише raw JSON каталогу, без фінального SKU/total. Для цього кейсу MCP-сервер виправданий тим, що перетворює "доступ до файлу" на стабільний доменний API.
 
 **Нотатка:**
 Через різницю UI між хостами, proof збережено на протокольному рівні (stdio/JSON-RPC) — це відтворювано і не залежить від конкретного IDE плагіна.
+
+
 
 
 
