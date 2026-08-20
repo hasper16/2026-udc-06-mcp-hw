@@ -5,7 +5,7 @@
 | Сервер | Дані/ресурси, до яких дістає | Секрети | Може писати? | Довіра до автора |
 |---|---|---|---|---|
 | filesystem | `${workspaceFolder}/app/data/` (фактично `catalog.json` та інші файли в цій теці) | немає | так (`write_file`, `edit_file`, `move_file`, `create_directory`) | Офіційний (@modelcontextprotocol/server-filesystem@2026.7.10) |
-| memory | In-session knowledge graph, без файлового доступу | немає | так (`create_*`, `delete_*`) | Офіційний (@modelcontextprotocol/server-memory@2026.7.4) |
+| memory | Knowledge graph із локальною персистентністю в `memory.jsonl` (файл на диску); retention ризик: дані зберігаються між сесіями | немає | так (`create_*`, `add_observations`, `delete_*`) | Офіційний (@modelcontextprotocol/server-memory@2026.7.4) |
 | catalog-server | `app/dist/index.js` як модуль-адаптер; дані читає через `loader.ts` з `app/data/catalog.json` | немає | ні (read-only tools) | Свій код, цей ХВ |
 
 ## 2. Ризики, які я вважаю реальними для цієї конфігурації
@@ -19,7 +19,7 @@
 - **Що саме:** Кожен сервер видить більше, ніж потребує для завдання.
 - **У цій конфігурації:**
   - ✅ Filesystem: точно `app/data`, не весь репо, не домашня тека
-  - ✅ Memory: нема файлів, лише сеансова пам'ять
+  - ✅ Memory: пише локальний `memory.jsonl` — retention ризик, але файлова область обмежена робочою директорією сервера
   - ✅ Власний сервер: імпортує з `app/dist`, ніякого додаткового доступу
   - **Висновок:** Доступ узгоджен; через проєкт нема порожніх дотримувалась, навіть для домашки це мінімально.
 
@@ -30,7 +30,7 @@
   - ✅ Якщо секрет колись потрібен, передавати його слід тільки через `${ENV_VAR}`
   - ✅ `.env` вже в `.gitignore` (домашка умовна, але дотримується)
   - ✅ `.env.example` — шаблон без значень
-  - ⚠️ Попередня перевірка робила лише вузький `git grep` по шаблонах `ghp_`, `github_pat_`, `sk-`; це не замінює повноцінний secret scanner.
+  - ⚠️ Попередня перевірка робила лише вузький `git grep` по шаблонам `ghp_`, `github_pat_`, `sk-`; це не замінює повноцінний secret scanner.
   - **Висновок:** за перевіреними шаблонами секретів не знайдено, але для повної впевненості потрібен secret scanner.
 
 ### **Зміна поведінки сервера після встановлення**
@@ -108,7 +108,7 @@
   
 - [x] Я дав йому мінімальну область доступу, а не «щоб точно працювало»
   - filesystem: лише `app/data`
-  - memory: in-session (no filesystem)
+  - memory: пише `memory.jsonl` на диск; retention ризик — дані зберігаються між сесіями
   - catalog-server: 0 доступу самостійно, тільки через app/ (read-only)
   
 - [x] Жоден секрет не потрапив у файл, який комітиться
@@ -117,14 +117,9 @@
   
 - [x] Я знаю, чи є серед його tools такі, що змінюють стан, і чи вимагається підтвердження перед викликом
   - filesystem: `write_file`/`edit_file`/`move_file`/`create_directory` — state-changing; у GitHub Copilot IntelliJ IDEA plugin 1.15.0-261 окремого per-call confirmation я не підтвердив, тож контроль лишається ⚠️
-  - memory: `create_*` та `delete_*` — state-changing у межах graph; окреме per-call confirmation не гарантоване, тож контроль лишається ⚠️
+  - memory: `create_*`, `add_observations`, `delete_*` — state-changing у межах graph та `memory.jsonl`; окреме per-call confirmation не гарантоване, тож контроль лишається ⚠️
   - catalog-server: жодних write tools
   
 - [x] Версія зафіксована настільки, наскільки це можливо
   - Власний сервер: package-lock.json гарантує версії
   - Public: зафіксовано `@2026.7.10` і `@2026.7.4`
-
-
-
-
-
