@@ -4,10 +4,10 @@
  * Exposes tools and resources backed by the existing app domain logic
  * imported from app/dist instead of reimplementing business rules.
  *
- * API note: the SDK is mid-transition between v1 and v2 and exact signatures
- * move. If something below does not compile against your installed version,
- * trust the SDK docs over this file — checking that is part of the exercise.
- * Docs: https://ts.sdk.modelcontextprotocol.io/
+ * Uses the stable TypeScript SDK v2 (@modelcontextprotocol/server).
+
+
+ * Docs: https://ts.sdk.modelcontextprotocol.io/v2/
  */
 
 import { McpServer } from "@modelcontextprotocol/server";
