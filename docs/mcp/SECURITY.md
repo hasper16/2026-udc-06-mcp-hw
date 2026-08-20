@@ -59,6 +59,7 @@
 
 2. **Власний сервер — тільки read-only tools**
    - `search_inventory` — читає і фільтрує товари
+   - `check_stock` — перевіряє рівень запасів конкретного товару (read-only)
    - `low_stock` — читає і лічить товари нижче лімітів
    - `inventory://catalog` — resource, тільки читання
    - Жодного `fs.writeFile`, жодних network calls, жодних shell commands
