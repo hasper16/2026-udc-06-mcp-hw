@@ -57,7 +57,7 @@ This app uses three MCP servers configured at the repo root (`.mcp.json`).
 - **Command:** `npx -y @modelcontextprotocol/server-filesystem@2026.7.10 ${workspaceFolder}/app/data`
 - **Purpose:** Allows access to `catalog.json` during verification and A/B checks.
 - **Key tools:** `read_text_file`, `list_directory`, `list_allowed_directories` (+ write-capable tools like `write_file`, `edit_file`, `move_file`).
-- **Scope:** Limited to `${workspaceFolder}/app/data`.
+- **Scope:** Use a read-only mount or separate copy of `${workspaceFolder}/app/data` so `catalog.json` stays available without write access to the original data directory.
 
 ### memory
 
